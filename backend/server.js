@@ -28,6 +28,14 @@ app.use(cors({
   credentials: true
 }));
 
+// TEMPORARY: request logger — helps confirm whether requests from the
+// phone are even reaching the server, and what Origin they carry.
+// Remove this once the mobile upload issue is fixed.
+app.use((req, res, next) => {
+  console.log(req.method, req.originalUrl, '| Origin:', req.headers.origin);
+  next();
+});
+
 app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
