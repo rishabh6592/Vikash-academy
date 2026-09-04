@@ -7,7 +7,7 @@
 
 // Change this to your deployed backend URL when you go live,
 // e.g. 'https://vikash-academy-api.onrender.com/api'
-const API_BASE_URL = 'https://vikash-academy-fullstack.onrender.com';
+const API_BASE_URL = 'https://vikash-academy-fullstack.onrender.com/api';
 
 /* ---------------- Session ----------------
    Uses sessionStorage (not localStorage) so each browser TAB keeps
