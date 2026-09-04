@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Login — Vikash Academy</title>
+<!-- Favicon (Tab Icon) -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='25' fill='%2314532d'/%3E%3Ctext x='50%25' y='55%25' font-family='Poppins, sans-serif' font-size='46' font-weight='700' fill='%23f59e0b' dominant-baseline='middle' text-anchor='middle'%3EVA%3C/text%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="login">
+
+<div class="auth-shell">
+  <div style="width:100%; max-width:420px;">
+    <a href="index.html" class="back-home">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Back to website
+    </a>
+
+    <div class="auth-card">
+      <div class="brand"><span class="brand-mark">VA</span>Vikash Academy</div>
+      <p class="auth-sub">Log in to continue</p>
+
+      <div class="tabs">
+        <button type="button" class="tab-btn" id="tabStudentBtn" onclick="switchTab('student')">Student</button>
+        <button type="button" class="tab-btn" id="tabAdminBtn" onclick="switchTab('admin')">Admin</button>
+      </div>
+
+      <div class="form-error" id="formError"></div>
+
+      <!-- STUDENT LOGIN -->
+      <div class="form-panel" id="panelStudent">
+        <form id="studentLoginForm" onsubmit="handleStudentLogin(event)">
+          <div class="field">
+            <label>Roll Number</label>
+            <input type="text" id="ls_rollNo" required autocomplete="username">
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" id="ls_password" required autocomplete="current-password">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="studentLoginBtn">Login</button>
+        </form>
+        <div class="hint-box">Don't have login details? Ask the academy admin — accounts are created for you when you're enrolled.</div>
+      </div>
+
+      <!-- ADMIN LOGIN -->
+      <div class="form-panel" id="panelAdmin">
+        <form id="adminLoginForm" onsubmit="handleAdminLogin(event)">
+          <div class="field">
+            <label>Username</label>
+            <input type="text" id="la_username" required autocomplete="username">
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" id="la_password" required autocomplete="current-password">
+          </div>
+          <button type="submit" class="btn btn-dark btn-block" id="adminLoginBtn">Login</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  function switchTab(which) {
+    document.getElementById('tabStudentBtn').classList.toggle('active', which === 'student');
+    document.getElementById('tabAdminBtn').classList.toggle('active', which === 'admin');
+    document.getElementById('panelStudent').classList.toggle('active', which === 'student');
+    document.getElementById('panelAdmin').classList.toggle('active', which === 'admin');
+    hideError();
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('formError');
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+  function hideError() {
+    document.getElementById('formError').classList.remove('show');
+  }
+
+  // If someone already has a valid session, skip straight to their dashboard
+  (function redirectIfLoggedIn() {
+    const session = getSession();
+    if (session && session.role === 'admin') window.location.href = 'admin.html';
+    else if (session && session.role === 'student') window.location.href = 'student.html';
+  })();
+
+  async function handleStudentLogin(e) {
+    e.preventDefault();
+    hideError();
+    const btn = document.getElementById('studentLoginBtn');
+    btn.disabled = true;
+    try {
+      await studentLogin(
+        document.getElementById('ls_rollNo').value.trim(),
+        document.getElementById('ls_password').value
+      );
+      window.location.href = 'student.html';
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function handleAdminLogin(e) {
+    e.preventDefault();
+    hideError();
+    const btn = document.getElementById('adminLoginBtn');
+    btn.disabled = true;
+    try {
+      await adminLogin(
+        document.getElementById('la_username').value.trim(),
+        document.getElementById('la_password').value
+      );
+      window.location.href = 'admin.html';
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ?as=admin opens straight to the admin tab (used by the site's footer/nav links)
+  const params = new URLSearchParams(window.location.search);
+  switchTab(params.get('as') === 'admin' ? 'admin' : 'student');
+</script>
+</body>
+</html>

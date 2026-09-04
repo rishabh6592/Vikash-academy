@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Dashboard — Vikash Academy</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='25' fill='%2314532d'/%3E%3Ctext x='50%25' y='55%25' font-family='Poppins, sans-serif' font-size='46' font-weight='700' fill='%23f59e0b' dominant-baseline='middle' text-anchor='middle'%3EVA%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  /* Notification bell + dropdown */
+  .notif-wrap { position: relative; }
+  .notif-bell {
+    position: relative;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .notif-bell:hover { border-color: var(--green-700); color: var(--green-700); }
+  .notif-badge {
+    position: absolute;
+    top: -4px; right: -4px;
+    background: var(--red);
+    color: var(--white);
+    font-size: 0.68rem;
+    font-weight: 700;
+    min-width: 18px; height: 18px;
+    border-radius: 999px;
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 0 4px;
+  }
+  .notif-panel {
+    display: none;
+    position: absolute;
+    top: 48px; right: 0;
+    width: 320px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-pop);
+    z-index: 50;
+  }
+  .notif-panel.open { display: block; }
+  .notif-panel-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+    font-weight: 600;
+    position: sticky; top: 0;
+    background: var(--white);
+  }
+  .notif-mark-all {
+    background: none; border: none; color: var(--green-700);
+    font-size: 0.78rem; cursor: pointer; font-weight: 600;
+  }
+  .notif-list { list-style: none; margin: 0; padding: 0; }
+  .notif-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-item.unread { background: var(--green-100); }
+  .notif-item .notif-msg { margin-bottom: 4px; color: var(--ink); }
+  .notif-item .notif-time { font-size: 0.72rem; color: var(--ink-soft); }
+  @media (max-width: 480px) {
+    .notif-panel { width: calc(100vw - 32px); right: -8px; }
+  }
+</style>
+</head>
+<body data-page="admin">
+
+<div class="dash-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><span class="brand-mark">VA</span>Vikash Academy</div>
+    <ul class="side-links">
+      <li><a href="#overview" data-section="overview" class="active">Overview</a></li>
+      <li><a href="#students" data-section="students">Students</a></li>
+      <li><a href="#classes" data-section="classes">Class Timing</a></li>
+      <li><a href="#holidays" data-section="holidays">Holidays</a></li>
+      <li><a href="#payments" data-section="payments">Payments</a></li>
+    </ul>
+    <div class="sidebar-foot">
+      <div class="sidebar-user">Logged in as <b>Admin</b></div>
+      <button class="btn btn-outline btn-sm btn-block" style="color:#fff; border-color:rgba(255,255,255,0.4)" onclick="logout()">Logout</button>
+    </div>
+  </aside>
+
+  <div class="dash-main">
+    <div class="dash-topbar">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <h2 id="pageTitle">Overview</h2>
+      </div>
+      <div style="display:flex; align-items:center; gap:14px;">
+        <div class="notif-wrap">
+          <button class="notif-bell" id="notifBellBtn" onclick="toggleNotifPanel()" aria-label="Notifications">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span class="notif-badge" id="notifBadge">0</span>
+          </button>
+          <div class="notif-panel" id="notifPanel">
+            <div class="notif-panel-head">
+              <span>Notifications</span>
+              <div style="display:flex; gap:12px;">
+                <button class="notif-mark-all" onclick="markAllRead()">Mark all read</button>
+                <button class="notif-mark-all" onclick="clearAllNotifications()">Clear all</button>
+              </div>
+            </div>
+            <ul class="notif-list" id="notifList">
+              <li class="empty-state">Loading…</li>
+            </ul>
+          </div>
+        </div>
+        <a href="index.html" class="btn btn-outline btn-sm">View Website</a>
+      </div>
+    </div>
+
+    <div class="dash-body">
+
+      <!-- OVERVIEW -->
+      <section class="dash-section" id="sec-overview">
+        <div class="stat-grid" id="statGrid"></div>
+        <div class="panel">
+          <div class="panel-head"><h3>Upcoming holidays</h3></div>
+          <ul class="notice-list" id="ovHolidays"></ul>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Pending payments this month</h3></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Student</th><th>Class</th><th>Month</th><th>Amount</th><th>Status</th></tr></thead>
+              <tbody id="ovPending"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- STUDENTS -->
+      <section class="dash-section" id="sec-students" style="display:none">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>All Students</h3>
+            <div class="select-inline">
+              <select id="studentClassFilter" onchange="renderStudents()">
+                <option value="">All Classes</option>
+              </select>
+              <button class="btn btn-primary btn-sm" onclick="openStudentModal()">+ Add Student</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Roll No</th><th>Name</th><th>Class</th><th>Mobile</th><th>Join Date</th><th></th></tr></thead>
+              <tbody id="studentTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- CLASSES / TIMING -->
+      <section class="dash-section" id="sec-classes" style="display:none">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Edit Class Timing and Fees</h3>
+            <button class="btn btn-primary btn-sm" onclick="openClassModal()">+ Add Class</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Class</th><th>Timing</th><th>Days</th><th>Monthly Fee (₹)</th><th></th></tr></thead>
+              <tbody id="classTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- HOLIDAYS -->
+      <section class="dash-section" id="sec-holidays" style="display:none">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Holiday List</h3>
+            <button class="btn btn-primary btn-sm" onclick="openHolidayModal()">+ Add Holiday</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Reason</th><th></th></tr></thead>
+              <tbody id="holidayTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAYMENTS -->
+      <section class="dash-section" id="sec-payments" style="display:none">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Class-wise Payments</h3>
+            <div class="select-inline">
+              <select id="paymentClassFilter" onchange="renderPayments()"></select>
+              <button class="btn btn-primary btn-sm" onclick="openPaymentModal()">+ Add Payment Entry</button>
+            </div>
+          </div>
+          <div class="stat-grid" id="paymentStatGrid" style="margin-bottom:18px"></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Student</th><th>Month</th><th>Amount (₹)</th><th>Status</th><th>Paid On</th><th></th></tr></thead>
+              <tbody id="paymentTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT MODAL -->
+<div class="modal-backdrop" id="studentModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="studentModalTitle">Add Student</h3>
+      <button class="modal-close" onclick="closeModal('studentModal')">&times;</button>
+    </div>
+    <form id="studentForm" onsubmit="saveStudent(event)">
+      <input type="hidden" id="sf_id">
+      <div class="form-grid">
+        <div class="field full">
+          <label>Student Name</label>
+          <input type="text" id="sf_name" required>
+        </div>
+        <div class="field">
+          <label>Roll No</label>
+          <input type="text" id="sf_rollNo" required>
+        </div>
+        <div class="field">
+          <label>Class</label>
+          <select id="sf_classId" required></select>
+        </div>
+        <div class="field full">
+          <label>Father's Name</label>
+          <input type="text" id="sf_fatherName">
+        </div>
+        <div class="field">
+          <label>Mobile Number</label>
+          <input type="tel" id="sf_phone" required>
+        </div>
+        <div class="field">
+          <label>Login Password</label>
+          <input type="text" id="sf_password">
+        </div>
+        <div class="field full">
+          <label>Address</label>
+          <input type="text" id="sf_address">
+        </div>
+        <div class="field full">
+          <label>Join Date</label>
+          <input type="date" id="sf_joinDate" required>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary btn-block">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- HOLIDAY MODAL -->
+<div class="modal-backdrop" id="holidayModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Add Holiday</h3>
+      <button class="modal-close" onclick="closeModal('holidayModal')">&times;</button>
+    </div>
+    <form id="holidayForm" onsubmit="saveHoliday(event)">
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="hf_date" required>
+      </div>
+      <div class="field">
+        <label>Reason</label>
+        <input type="text" id="hf_reason" placeholder="e.g. Diwali Holiday" required>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary btn-block">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div class="modal-backdrop" id="paymentModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Add Payment Entry</h3>
+      <button class="modal-close" onclick="closeModal('paymentModal')">&times;</button>
+    </div>
+    <form id="paymentForm" onsubmit="savePayment(event)">
+      <div class="field">
+        <label>Student</label>
+        <select id="pf_studentId" required></select>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Month</label>
+          <input type="month" id="pf_month" required>
+        </div>
+        <div class="field">
+          <label>Amount (₹)</label>
+          <input type="number" id="pf_amount" required>
+        </div>
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select id="pf_status">
+          <option value="Unpaid">Unpaid</option>
+          <option value="Paid">Paid</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary btn-block">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- CLASS MODAL -->
+<div class="modal-backdrop" id="classModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="classModalTitle">Add Class</h3>
+      <button class="modal-close" onclick="closeModal('classModal')">&times;</button>
+    </div>
+    <form id="classForm" onsubmit="saveClass(event)">
+      <input type="hidden" id="cf_id">
+      <div class="form-grid">
+        <div class="field full">
+          <label>Class Name</label>
+          <input type="text" id="cf_name" placeholder="e.g. Class 11" required>
+        </div>
+        <div class="field">
+          <label>Timing</label>
+          <input type="text" id="cf_timing" placeholder="e.g. 5:00 PM - 6:30 PM" required>
+        </div>
+        <div class="field">
+          <label>Days</label>
+          <input type="text" id="cf_days" placeholder="e.g. Monday - Saturday" required>
+        </div>
+        <div class="field full">
+          <label>Monthly Fee (₹)</label>
+          <input type="number" id="cf_fee" required>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-primary btn-block">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/api.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

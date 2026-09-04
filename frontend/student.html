@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Dashboard — Vikash Academy</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='25' fill='%2314532d'/%3E%3Ctext x='50%25' y='55%25' font-family='Poppins, sans-serif' font-size='46' font-weight='700' fill='%23f59e0b' dominant-baseline='middle' text-anchor='middle'%3EVA%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  /* Fee reminder banner — shown only when a current-month fee is unpaid
+     and the month is within its last 3 days. */
+  .reminder-banner {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    background: #fff6e6;
+    border: 1px solid var(--marigold);
+    border-radius: var(--radius-md);
+    padding: 16px 20px;
+    margin-bottom: 26px;
+    font-size: 0.9rem;
+  }
+  .reminder-banner b { color: var(--marigold-dark); }
+
+  /* ID document upload panel */
+  .id-doc-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    margin-bottom: 14px;
+    font-size: 0.88rem;
+  }
+  .id-doc-status.uploaded { background: var(--green-ok-bg); border-color: var(--green-ok); }
+  .id-doc-status.missing { background: var(--red-bg); border-color: var(--red); }
+  .id-doc-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .id-doc-form input[type="file"] {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    font-size: 0.85rem;
+    background: var(--white);
+  }
+  .id-doc-hint { font-size: 0.8rem; color: var(--ink-soft); margin-top: 8px; }
+</style>
+</head>
+<body data-page="student">
+
+<div class="dash-shell">
+  <div class="dash-main" style="width:100%;">
+    <div class="dash-topbar">
+      <div class="brand"><span class="brand-mark">VA</span>Vikash Academy</div>
+      <div style="display:flex; gap:10px;">
+        <a href="index.html" class="btn btn-outline btn-sm">View Website</a>
+        <button class="btn btn-outline btn-sm" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="dash-body">
+
+      <div class="reminder-banner" id="paymentReminder"></div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>My Profile</h3></div>
+        <div class="profile-card" id="profileCard">
+          <div class="avatar-circle">…</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>My ID Document</h3></div>
+        <div class="id-doc-status" id="idDocStatus">Loading…</div>
+        <form class="id-doc-form" id="idDocForm" onsubmit="submitIdDocument(event)">
+          <input type="file" id="idDocFile" accept=".jpg,.jpeg,.png,.webp,.pdf" required>
+          <button type="submit" class="btn btn-primary btn-sm">Upload</button>
+        </form>
+        <p class="id-doc-hint">Accepted: JPG, PNG, WEBP or PDF, up to 5 MB. Uploading a new file replaces the old one.</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>My Payment History</h3></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Month</th><th>Amount (₹)</th><th>Status</th><th>Paid On</th><th></th></tr></thead>
+            <tbody id="myPayments">
+              <tr><td colspan="5" class="empty-state">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/api.js"></script>
+<script>
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  function logout() {
+    clearSession();
+    window.location.href = 'index.html';
+  }
+
+  (async function guard() {
+    const session = getSession();
+    if (!session || session.role !== 'student') {
+      window.location.href = 'login.html';
+      return;
+    }
+    await loadDashboard();
+  })();
+
+  /* ---------------- Payment reminder ----------------
+     Shows a banner when the CURRENT month's fee entry is Unpaid and
+     today falls within the last 3 days of that month (inclusive). */
+  function daysInMonth(year, month) { // month is 1-12
+    return new Date(year, month, 0).getDate();
+  }
+
+  function buildReminder(payments) {
+    const now = new Date();
+    const currentMonthKey = now.toISOString().slice(0, 7); // YYYY-MM
+    const entry = payments.find(p => p.month === currentMonthKey && p.status === 'Unpaid');
+    if (!entry) return null;
+
+    const [y, m] = currentMonthKey.split('-').map(Number);
+    const total = daysInMonth(y, m);
+    const daysLeft = total - now.getDate();
+    if (daysLeft > 3) return null;
+
+    return { entry, daysLeft };
+  }
+
+  function renderReminder(payments) {
+    const box = document.getElementById('paymentReminder');
+    const reminder = buildReminder(payments);
+    if (!reminder) {
+      box.style.display = 'none';
+      return;
+    }
+    const { entry, daysLeft } = reminder;
+    const daysText = daysLeft <= 0 ? 'today' : `in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`;
+    box.style.display = 'flex';
+    box.innerHTML = `
+      <div><b>Fee reminder:</b> Your ${monthLabel(entry.month)} fee of ₹${entry.amount} is due ${daysText}.</div>
+      <button class="btn btn-primary btn-sm" onclick="payNow('${entry.id}')">Pay Now</button>
+    `;
+  }
+
+  /* ---------------- Pay Now ---------------- */
+  async function payNow(id) {
+    try {
+      await payMyPayment(id);
+      showToast('Payment successful — thank you!');
+      loadDashboard();
+    } catch (err) {
+      showToast(err.message);
+    }
+  }
+
+  /* ---------------- ID document ---------------- */
+  function renderIdDocStatus(me) {
+    const box = document.getElementById('idDocStatus');
+    if (me.idDocument) {
+      box.className = 'id-doc-status uploaded';
+      const when = me.idDocumentUploadedAt ? formatDate(me.idDocumentUploadedAt.slice(0, 10)) : '';
+      box.innerHTML = `<span>✅ Uploaded: <b>${me.idDocumentOriginalName || 'Document'}</b>${when ? ` on ${when}` : ''}</span>`;
+    } else {
+      box.className = 'id-doc-status missing';
+      box.innerHTML = `<span>⚠️ No ID document uploaded yet. Please upload your one government-issued ID. eg: Aadhaar Card, PAN Card, Voter ID, MarkSheet.</span>`;
+    }
+  }
+
+  async function submitIdDocument(e) {
+    e.preventDefault();
+    const fileInput = document.getElementById('idDocFile');
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    try {
+      await uploadMyIdDocument(file);
+      showToast('Document uploaded successfully.');
+      fileInput.value = '';
+      const me = await fetchMe();
+      renderIdDocStatus(me);
+    } catch (err) {
+      showToast(err.message);
+    }
+  }
+
+  async function loadDashboard() {
+    try {
+      const me = await fetchMe();
+      const classesRaw = await apiFetch('/classes');
+      const classes = normalizeList(classesRaw);
+      const cls = classes.find(c => c.id === me.classId);
+
+      document.getElementById('profileCard').innerHTML = `
+        <div class="avatar-circle">${(me.name || '?').charAt(0).toUpperCase()}</div>
+        <div style="flex:1; min-width:220px;">
+          <h3 style="margin-bottom:4px;">${me.name}</h3>
+          <p style="margin:0;">Roll No: ${me.rollNo}</p>
+        </div>
+        <div class="detail-grid" style="flex:1 1 100%;">
+          <div><div class="d-label">Class</div><div class="d-value">${cls ? cls.name : '—'}</div></div>
+          <div><div class="d-label">Timing</div><div class="d-value">${cls ? cls.timing : '—'}</div></div>
+          <div><div class="d-label">Mobile</div><div class="d-value">${me.phone || '—'}</div></div>
+          <div><div class="d-label">Joined</div><div class="d-value">${formatDate(me.joinDate)}</div></div>
+        </div>
+      `;
+
+      renderIdDocStatus(me);
+
+      const payments = await getMyPayments();
+      renderReminder(payments);
+
+      const tbody = document.getElementById('myPayments');
+      const sorted = [...payments].sort((a, b) => b.month.localeCompare(a.month));
+      tbody.innerHTML = sorted.length
+        ? sorted.map(p => `
+            <tr>
+              <td>${monthLabel(p.month)}</td>
+              <td>₹${p.amount}</td>
+              <td><span class="badge ${p.status === 'Paid' ? 'badge-paid' : 'badge-unpaid'}">${p.status}</span></td>
+              <td>${p.paidDate ? formatDate(p.paidDate) : '—'}</td>
+              <td>${p.status === 'Unpaid' ? `<button class="icon-btn" onclick="payNow('${p.id}')">Pay Now</button>` : ''}</td>
+            </tr>
+          `).join('')
+        : '<tr><td colspan="5" class="empty-state">No payment records yet.</td></tr>';
+    } catch (err) {
+      showToast(err.message);
+    }
+  }
+</script>
+</body>
+</html>
