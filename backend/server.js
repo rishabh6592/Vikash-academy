@@ -15,14 +15,7 @@ const currentAffairRoutes = require('./routes/currentAffairRoutes');
 
 const app = express();
 
-// Express auto-generates an ETag for every JSON response by default. On a
-// repeated identical request the browser then gets a bare 304 back, which
-// can confuse a plain fetch() client into thinking the request failed
-// (seen as "Could not load holidays/classes right now" even though the
-// data is fine). API responses should always be fresh, not cached, so we
-// turn this off entirely for this app.
 app.disable('etag');
-
 app.use(express.json());
 
 const allowedOrigins = (process.env.CORS_ORIGIN || '')
@@ -35,7 +28,6 @@ app.use(cors({
   credentials: true
 }));
 
-// Belt-and-braces: explicitly tell the browser never to cache /api responses.
 app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
@@ -51,10 +43,8 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/current-affairs', currentAffairRoutes);
 
-// 404 fallback for unknown API routes
 app.use('/api', (req, res) => res.status(404).json({ message: 'Not found.' }));
 
-// Generic error handler (catches anything thrown/rejected that a route missed)
 app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({ message: 'Something went wrong on the server.' });
@@ -62,11 +52,16 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-connectDB().then(() => {
-  app.listen(PORT, () => console.log(`Vikash Academy API running on port ${PORT}`));
+// Server ko turant start karo, DB connection ka wait mat karo.
+// Isse Render ko port turant mil jayega, chahe DB connect ho raha ho ya fail ho jaye.
+app.listen(PORT, () => console.log(`Vikash Academy API running on port ${PORT}`));
 
-  // Fetch current affairs once at startup (so the list isn't empty on a
-  // fresh deploy/restart), then every day at 6:00 AM server time.
-  fetchCurrentAffairs();
-  cron.schedule('0 6 * * *', fetchCurrentAffairs);
-});
+connectDB()
+  .then(() => {
+    console.log('MongoDB connected');
+    fetchCurrentAffairs();
+    cron.schedule('0 6 * * *', fetchCurrentAffairs);
+  })
+  .catch((err) => {
+    console.error('MongoDB connection failed:', err.message);
+  });
