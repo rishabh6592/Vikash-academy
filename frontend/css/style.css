@@ -1590,3 +1590,29 @@ tr:last-child td {
   color: black;
   border: 1px solid var(--green-900);
 }
+
+
+@media (max-width:600px){
+  #notifPanel{
+    position:fixed!important;
+    top:68px!important;
+    right:10px!important;
+    left:auto!important;
+    width:min(360px,calc(100vw - 20px))!important;
+    max-width:none!important;
+    z-index:9999!important;
+  }
+
+  .dash-body{padding:14px 10px 40px}
+  .panel{padding:12px}
+  .table-wrap{width:100%;overflow-x:auto}
+  .row-actions{white-space:nowrap}
+}
+
+@media(max-width:600px){
+  .table-wrap{overflow-x:auto}
+  .table-wrap table{min-width:700px}
+  .table-wrap th,.table-wrap td{padding:10px 8px;white-space:nowrap}
+  .row-actions{display:flex;gap:6px;white-space:nowrap}
+  .row-actions button{padding:7px 10px}
+}

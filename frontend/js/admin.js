@@ -168,6 +168,7 @@ async function clearAllNotifications() {
   if (!confirm('Clear all notifications? This cannot be undone.')) return;
   try {
     await clearAllNotificationsApi();
+    document.getElementById('notifPanel').classList.remove('open');
     loadNotifications();
     refreshNotifBadge();
     showToast('Notifications cleared.');
