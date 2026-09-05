@@ -8,7 +8,7 @@
 // Change this to your deployed backend URL when you go live,
 // e.g. 'https://vikash-academy-api.onrender.com/api'
 const API_BASE_URL = 'https://vikash-academy-fullstack.onrender.com/api';
-
+fetch(`${API_BASE_URL}/health`).catch(() => {});
 /* ---------------- Session ----------------
    Uses sessionStorage (not localStorage) so each browser TAB keeps
    its own independent login. Opening Admin in one tab and Student
