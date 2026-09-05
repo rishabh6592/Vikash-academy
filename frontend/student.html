@@ -265,25 +265,21 @@
     }
   }
 
-  /* ---------------- ID document ---------------- */
+  /* ---------------- ID document ----------------
+     Note: idDocument stores Cloudinary's public_id, not a real URL, and
+     the file is private (type: 'authenticated') — so a plain fetch()
+     from the browser can never verify it directly (no valid URL, and
+     even a correct one would 403 without a signed link). We trust the
+     database's record instead of trying to re-verify from the client.
+     If a file is ever manually deleted from Cloudinary, that's caught
+     server-side when the admin opens "View ID" (that route builds a
+     signed URL and returns a clean 404 if it's gone). */
 
   const MISSING_DOC_MSG = '⚠️ No ID document uploaded yet. Please upload your one government-issued ID. eg: Aadhaar Card, PAN Card, Voter ID, MarkSheet.';
 
-  // Tracks whether a verified, currently-existing document is on file —
-  // used to decide whether to warn the student before they overwrite it.
+  // Tracks whether a document is currently on file — used to decide
+  // whether to warn the student before they overwrite it.
   let hasExistingDocument = false;
-
-  // Checks whether the stored document URL still resolves (i.e. hasn't been
-  // manually removed from Cloudinary behind the DB's back).
-  async function checkDocumentExists(url) {
-    try {
-      const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-      return res.ok; // Cloudinary returns 404 once the asset is deleted
-    } catch (e) {
-      // Network/CORS hiccup — fail open so we don't wrongly flag it as missing
-      return true;
-    }
-  }
 
   function showUploadedState(me) {
     const box = document.getElementById('idDocStatus');
@@ -300,41 +296,12 @@
     hasExistingDocument = false;
   }
 
-  /**
-   * Renders the ID-document panel.
-   * @param {object} me - the current user object from /me
-   * @param {object} [opts]
-   * @param {boolean} [opts.verify=true] - whether to re-check with Cloudinary
-   *   that the file still exists. Pass `verify: false` right after a
-   *   successful upload, since we already know the file is fresh — an
-   *   immediate HEAD check can false-negative due to CDN propagation delay.
-   */
-  async function renderIdDocStatus(me, opts = {}) {
-    const { verify = true } = opts;
-    const box = document.getElementById('idDocStatus');
-
+  function renderIdDocStatus(me) {
     if (!me.idDocument) {
       showMissingState(MISSING_DOC_MSG);
       return;
     }
-
-    if (!verify) {
-      showUploadedState(me);
-      return;
-    }
-
-    // Only verify against Cloudinary on page load/refresh — this is where
-    // we detect a file that was manually deleted from Cloudinary directly.
-    box.className = 'id-doc-status checking';
-    box.innerHTML = `<span>⏳ Checking document status…</span>`;
-
-    const exists = await checkDocumentExists(me.idDocument);
-
-    if (exists) {
-      showUploadedState(me);
-    } else {
-      showMissingState('⚠️ Your uploaded document is no longer available. Please upload it again — one government-issued ID. eg: Aadhaar Card, PAN Card, Voter ID, MarkSheet.');
-    }
+    showUploadedState(me);
   }
 
   async function submitIdDocument(e) {
@@ -343,7 +310,7 @@
     const file = fileInput.files[0];
     if (!file) return;
 
-    // A verified document already exists — confirm before replacing it.
+    // A document already exists — confirm before replacing it.
     if (hasExistingDocument) {
       const ok = await showConfirmModal({
         title: 'Replace Document?',
@@ -373,9 +340,7 @@
       showToast('Document uploaded successfully.');
       fileInput.value = '';
       const me = await fetchMe();
-      // Skip the Cloudinary re-check here — we just uploaded it successfully,
-      // so show the green "uploaded" state immediately.
-      await renderIdDocStatus(me, { verify: false });
+      renderIdDocStatus(me);
     } catch (err) {
       showToast(err.message);
       // Restore whatever was shown before the upload attempt.
@@ -409,9 +374,7 @@
         </div>
       `;
 
-      // Verify against Cloudinary here — this runs on page load/refresh,
-      // which is when a manually-deleted file should be detected.
-      await renderIdDocStatus(me, { verify: true });
+      renderIdDocStatus(me);
 
       const payments = await getMyPayments();
       renderReminder(payments);
