@@ -42,6 +42,7 @@
   }
   .id-doc-status.uploaded { background: var(--green-ok-bg); border-color: var(--green-ok); }
   .id-doc-status.missing { background: var(--red-bg); border-color: var(--red); }
+  .id-doc-status.checking { background: var(--white); border-color: var(--line); color: var(--ink-soft); }
   .id-doc-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   .id-doc-form input[type="file"] {
     border: 1px solid var(--line);
@@ -50,7 +51,52 @@
     font-size: 0.85rem;
     background: var(--white);
   }
+  .id-doc-form button[disabled] { opacity: 0.6; cursor: not-allowed; }
   .id-doc-hint { font-size: 0.8rem; color: var(--ink-soft); margin-top: 8px; }
+
+  /* ---------------- Custom confirm modal ---------------- */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 30, 24, 0.45);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-box {
+    background: var(--white);
+    border-radius: var(--radius-md);
+    max-width: 420px;
+    width: 100%;
+    padding: 26px 24px 22px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+    border-top: 4px solid var(--marigold);
+    animation: modalPop 0.18s ease-out;
+  }
+  @keyframes modalPop {
+    from { transform: translateY(8px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .modal-box h4 {
+    margin: 0 0 10px;
+    font-family: 'Poppins', sans-serif;
+    color: var(--forest, #14532d);
+    font-size: 1.1rem;
+  }
+  .modal-box p {
+    margin: 0 0 20px;
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
 </style>
 </head>
 <body data-page="student">
@@ -103,6 +149,18 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- Custom confirm modal (replaces native window.confirm) -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box">
+    <h4 id="confirmModalTitle">Replace Document?</h4>
+    <p id="confirmModalMsg">You have already uploaded an ID document. Uploading a new file will replace it.</p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-outline btn-sm" id="confirmModalCancel">Cancel</button>
+      <button type="button" class="btn btn-primary btn-sm" id="confirmModalOk">Yes, Replace</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/api.js"></script>
 <script>
   function showToast(msg) {
@@ -125,6 +183,39 @@
     }
     await loadDashboard();
   })();
+
+  /* ---------------- Custom confirm modal ----------------
+     Promise-based replacement for window.confirm(), styled to match
+     the site's theme. Resolves true (confirmed) or false (cancelled). */
+  function showConfirmModal({ title, message } = {}) {
+    const overlay = document.getElementById('confirmModal');
+    const titleEl = document.getElementById('confirmModalTitle');
+    const msgEl = document.getElementById('confirmModalMsg');
+    const okBtn = document.getElementById('confirmModalOk');
+    const cancelBtn = document.getElementById('confirmModalCancel');
+
+    if (title) titleEl.textContent = title;
+    if (message) msgEl.textContent = message;
+
+    overlay.classList.add('show');
+
+    return new Promise((resolve) => {
+      function cleanup(result) {
+        overlay.classList.remove('show');
+        okBtn.removeEventListener('click', onOk);
+        cancelBtn.removeEventListener('click', onCancel);
+        overlay.removeEventListener('click', onOverlayClick);
+        resolve(result);
+      }
+      function onOk() { cleanup(true); }
+      function onCancel() { cleanup(false); }
+      function onOverlayClick(e) { if (e.target === overlay) cleanup(false); }
+
+      okBtn.addEventListener('click', onOk);
+      cancelBtn.addEventListener('click', onCancel);
+      overlay.addEventListener('click', onOverlayClick);
+    });
+  }
 
   /* ---------------- Payment reminder ----------------
      Shows a banner when the CURRENT month's fee entry is Unpaid and
@@ -175,15 +266,74 @@
   }
 
   /* ---------------- ID document ---------------- */
-  function renderIdDocStatus(me) {
+
+  const MISSING_DOC_MSG = '⚠️ No ID document uploaded yet. Please upload your one government-issued ID. eg: Aadhaar Card, PAN Card, Voter ID, MarkSheet.';
+
+  // Tracks whether a verified, currently-existing document is on file —
+  // used to decide whether to warn the student before they overwrite it.
+  let hasExistingDocument = false;
+
+  // Checks whether the stored document URL still resolves (i.e. hasn't been
+  // manually removed from Cloudinary behind the DB's back).
+  async function checkDocumentExists(url) {
+    try {
+      const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+      return res.ok; // Cloudinary returns 404 once the asset is deleted
+    } catch (e) {
+      // Network/CORS hiccup — fail open so we don't wrongly flag it as missing
+      return true;
+    }
+  }
+
+  function showUploadedState(me) {
     const box = document.getElementById('idDocStatus');
-    if (me.idDocument) {
-      box.className = 'id-doc-status uploaded';
-      const when = me.idDocumentUploadedAt ? formatDate(me.idDocumentUploadedAt.slice(0, 10)) : '';
-      box.innerHTML = `<span>✅ Uploaded: <b>${me.idDocumentOriginalName || 'Document'}</b>${when ? ` on ${when}` : ''}</span>`;
+    box.className = 'id-doc-status uploaded';
+    const when = me.idDocumentUploadedAt ? formatDate(me.idDocumentUploadedAt.slice(0, 10)) : '';
+    box.innerHTML = `<span>✅ Uploaded: <b>${me.idDocumentOriginalName || 'Document'}</b>${when ? ` on ${when}` : ''}</span>`;
+    hasExistingDocument = true;
+  }
+
+  function showMissingState(msg) {
+    const box = document.getElementById('idDocStatus');
+    box.className = 'id-doc-status missing';
+    box.innerHTML = `<span>${msg}</span>`;
+    hasExistingDocument = false;
+  }
+
+  /**
+   * Renders the ID-document panel.
+   * @param {object} me - the current user object from /me
+   * @param {object} [opts]
+   * @param {boolean} [opts.verify=true] - whether to re-check with Cloudinary
+   *   that the file still exists. Pass `verify: false` right after a
+   *   successful upload, since we already know the file is fresh — an
+   *   immediate HEAD check can false-negative due to CDN propagation delay.
+   */
+  async function renderIdDocStatus(me, opts = {}) {
+    const { verify = true } = opts;
+    const box = document.getElementById('idDocStatus');
+
+    if (!me.idDocument) {
+      showMissingState(MISSING_DOC_MSG);
+      return;
+    }
+
+    if (!verify) {
+      showUploadedState(me);
+      return;
+    }
+
+    // Only verify against Cloudinary on page load/refresh — this is where
+    // we detect a file that was manually deleted from Cloudinary directly.
+    box.className = 'id-doc-status checking';
+    box.innerHTML = `<span>⏳ Checking document status…</span>`;
+
+    const exists = await checkDocumentExists(me.idDocument);
+
+    if (exists) {
+      showUploadedState(me);
     } else {
-      box.className = 'id-doc-status missing';
-      box.innerHTML = `<span>⚠️ No ID document uploaded yet. Please upload your one government-issued ID. eg: Aadhaar Card, PAN Card, Voter ID, MarkSheet.</span>`;
+      showMissingState('⚠️ Your uploaded document is no longer available. Please upload it again — one government-issued ID. eg: Aadhaar Card, PAN Card, Voter ID, MarkSheet.');
     }
   }
 
@@ -193,14 +343,48 @@
     const file = fileInput.files[0];
     if (!file) return;
 
+    // A verified document already exists — confirm before replacing it.
+    if (hasExistingDocument) {
+      const ok = await showConfirmModal({
+        title: 'Replace Document?',
+        message: 'You have already uploaded an ID document. Uploading a new file will replace it. Do you want to continue?'
+      });
+      if (!ok) {
+        fileInput.value = '';
+        return;
+      }
+    }
+
+    const box = document.getElementById('idDocStatus');
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const prevBtnText = submitBtn.textContent;
+    const prevBoxClass = box.className;
+    const prevBoxHtml = box.innerHTML;
+
+    // Uploading state — disable inputs, show a spinner-style message.
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Uploading…';
+    fileInput.disabled = true;
+    box.className = 'id-doc-status checking';
+    box.innerHTML = `<span>⏳ Uploading your document, please wait…</span>`;
+
     try {
       await uploadMyIdDocument(file);
       showToast('Document uploaded successfully.');
       fileInput.value = '';
       const me = await fetchMe();
-      renderIdDocStatus(me);
+      // Skip the Cloudinary re-check here — we just uploaded it successfully,
+      // so show the green "uploaded" state immediately.
+      await renderIdDocStatus(me, { verify: false });
     } catch (err) {
       showToast(err.message);
+      // Restore whatever was shown before the upload attempt.
+      box.className = prevBoxClass;
+      box.innerHTML = prevBoxHtml;
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = prevBtnText;
+      fileInput.disabled = false;
     }
   }
 
@@ -225,7 +409,9 @@
         </div>
       `;
 
-      renderIdDocStatus(me);
+      // Verify against Cloudinary here — this runs on page load/refresh,
+      // which is when a manually-deleted file should be detected.
+      await renderIdDocStatus(me, { verify: true });
 
       const payments = await getMyPayments();
       renderReminder(payments);
