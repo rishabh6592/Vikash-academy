@@ -10,8 +10,12 @@ const storage = new CloudinaryStorage({
     }
     return {
       folder: 'id-documents',
-      resource_type: 'auto',
-      type: 'authenticated', // koi direct link se nahi khulega, sirf signed URL se
+      // 'auto' PDFs ko Cloudinary "image" type maan ke store karta hai,
+      // jabki hum DB mein PDF ko "raw" maan ke fetch karte hain — mismatch
+      // hone se admin "View ID" pe file fetch nahi hoti. Isliye explicitly
+      // set karte hain taaki upload aur fetch dono same type use karein.
+      resource_type: file.mimetype === 'application/pdf' ? 'raw' : 'image',
+      type: 'authenticated',
       public_id: `${req.user.id}-${Date.now()}`,
     };
   },
@@ -30,7 +34,7 @@ function fileFilter(req, file, cb) {
 const uploadIdDocument = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB — phone camera photos ke liye
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
 
 function handleUploadError(err, req, res, next) {
