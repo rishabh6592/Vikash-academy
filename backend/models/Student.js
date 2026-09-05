@@ -13,7 +13,7 @@ const studentSchema = new mongoose.Schema(
     joinDate: { type: String, required: true }, // stored as YYYY-MM-DD to match the <input type="date"> the frontend sends
 
     // ID document (Aadhar card, etc.) the student uploads from their dashboard.
-    // idDocument now stores the Cloudinary public_id (not a local filename).
+    // idDocument stores the Cloudinary public_id (not a local filename).
     // The actual file lives on Cloudinary under type: 'authenticated', so it's
     // never publicly accessible — only fetched through the protected admin
     // route, which generates a short-lived signed URL from this public_id.
