@@ -233,11 +233,22 @@ async function renderStudents() {
   const db = await getDB();
   await fillClassFilterOptions(db);
   const filterVal = document.getElementById('studentClassFilter').value;
-  const list = filterVal ? db.students.filter(s => s.classId === filterVal) : db.students;
+  const searchVal = document.getElementById('studentSearchInput').value.trim().toLowerCase();
+
+  let list = filterVal ? db.students.filter(s => s.classId === filterVal) : db.students;
+
+  if (searchVal) {
+    list = list.filter(s =>
+      (s.name || '').toLowerCase().includes(searchVal) ||
+      (s.rollNo || '').toLowerCase().includes(searchVal) ||
+      (s.phone || '').toLowerCase().includes(searchVal)
+    );
+  }
+
   const tbody = document.getElementById('studentTable');
 
   if (list.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No students added yet.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No students found.</td></tr>';
     return;
   }
 
@@ -486,27 +497,36 @@ async function deleteHoliday(id) {
   }
 }
 
-/* ---------------- Render: Payments ---------------- */
+/* ---------------- Render: Payments ----------------
+   Main table now shows ONE consolidated row per student — their most
+   recent month's entry — instead of a separate row per month. This
+   removes the confusion where deleting a row looked like it wiped a
+   student's whole payment history (it never did — deletePaymentApi
+   always targeted a single month's record). "Paid On" here always
+   corresponds to that same latest month, not a stray/older entry.
+   Full month-by-month history — with per-month edit/status/delete —
+   lives in the "View" modal below. */
 async function fillPaymentClassFilter(db) {
   const filter = document.getElementById('paymentClassFilter');
   const current = filter.value;
   const sortedClasses = sortClassesByNumber(db.classes);
-  filter.innerHTML = sortedClasses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-  if (current) filter.value = current;
+  filter.innerHTML = '<option value="">All Classes</option>' +
+    sortedClasses.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  filter.value = current;
 }
 
 async function renderPayments() {
   const db = await getDB();
   await fillPaymentClassFilter(db);
-  const classId = document.getElementById('paymentClassFilter').value || (db.classes[0] && db.classes[0].id);
-  const classPayments = db.payments.filter(p => p.classId === classId);
+  const classId = document.getElementById('paymentClassFilter').value;
+  const classPayments = classId ? db.payments.filter(p => p.classId === classId) : db.payments;
 
   const totalCollected = classPayments.filter(p => p.status === 'Paid').reduce((sum, p) => sum + Number(p.amount), 0);
   const totalPending = classPayments.filter(p => p.status === 'Unpaid').reduce((sum, p) => sum + Number(p.amount), 0);
   const cls = db.classes.find(c => c.id === classId);
 
   document.getElementById('paymentStatGrid').innerHTML = `
-    <div class="stat-card"><div class="num">${cls ? cls.name : '—'}</div><div class="label">Selected Class</div></div>
+    <div class="stat-card"><div class="num">${classId ? (cls ? cls.name : '—') : 'All Classes'}</div><div class="label">Selected Class</div></div>
     <div class="stat-card"><div class="num">₹${totalCollected}</div><div class="label">Amount Collected</div></div>
     <div class="stat-card"><div class="num">₹${totalPending}</div><div class="label">Amount Pending</div></div>
   `;
@@ -516,8 +536,19 @@ async function renderPayments() {
     tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No payment entries for this class.</td></tr>';
     return;
   }
-  const sorted = [...classPayments].sort((a, b) => b.month.localeCompare(a.month));
-  tbody.innerHTML = sorted.map(p => {
+
+  // Pick each student's most recent month's payment record for the summary row
+  const latestByStudent = {};
+  classPayments.forEach(p => {
+    const existing = latestByStudent[p.studentId];
+    if (!existing || p.month.localeCompare(existing.month) > 0) {
+      latestByStudent[p.studentId] = p;
+    }
+  });
+
+  const rows = Object.values(latestByStudent).sort((a, b) => b.month.localeCompare(a.month));
+
+  tbody.innerHTML = rows.map(p => {
     const st = db.students.find(s => s.id === p.studentId);
     return `<tr>
       <td>${st ? st.name : '—'}</td>
@@ -526,28 +557,81 @@ async function renderPayments() {
       <td><span class="badge ${p.status === 'Paid' ? 'badge-paid' : 'badge-unpaid'}">${p.status === 'Paid' ? 'Paid' : 'Unpaid'}</span></td>
       <td>${p.paidDate ? formatDate(p.paidDate) : '—'}</td>
       <td class="row-actions">
-        <button class="icon-btn" onclick="togglePaymentStatus('${p.id}')">${p.status === 'Paid' ? 'Mark Unpaid' : 'Mark Paid'}</button>
-        <button class="icon-btn danger" onclick="deletePayment('${p.id}')">Delete</button>
+        <button class="icon-btn" onclick="viewPaymentHistory('${p.studentId}')">View</button>
       </td>
     </tr>`;
   }).join('');
 }
 
-async function togglePaymentStatus(id) {
+/* ---------------- Payment history modal (per student, all months) ---------------- */
+let paymentHistoryStudentId = null;
+
+async function viewPaymentHistory(studentId) {
+  paymentHistoryStudentId = studentId;
+  await renderPaymentHistoryModal();
+  openModal('paymentHistoryModal');
+}
+
+async function renderPaymentHistoryModal() {
+  const db = await getDB();
+  const student = db.students.find(s => s.id === paymentHistoryStudentId);
+  document.getElementById('paymentHistoryTitle').textContent =
+    student ? `${student.name} — Payment History` : 'Payment History';
+
+  const payments = db.payments
+    .filter(p => p.studentId === paymentHistoryStudentId)
+    .sort((a, b) => b.month.localeCompare(a.month));
+
+  const tbody = document.getElementById('paymentHistoryTable');
+  if (payments.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No payment entries yet.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = payments.map(p => `
+    <tr>
+      <td>${monthLabel(p.month)}</td>
+      <td><input type="number" class="history-amount-input" value="${p.amount}" onchange="updatePaymentField('${p.id}','amount',this.value)"></td>
+      <td><span class="badge ${p.status === 'Paid' ? 'badge-paid' : 'badge-unpaid'}">${p.status === 'Paid' ? 'Paid' : 'Unpaid'}</span></td>
+      <td>${p.paidDate ? formatDate(p.paidDate) : '—'}</td>
+      <td class="row-actions">
+        <button class="icon-btn" onclick="toggleHistoryPaymentStatus('${p.id}')">${p.status === 'Paid' ? 'Mark Unpaid' : 'Mark Paid'}</button>
+        <button class="icon-btn danger" onclick="deleteHistoryPayment('${p.id}')">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function updatePaymentField(paymentId, field, value) {
+  try {
+    const payload = { [field]: field === 'amount' ? (parseInt(value, 10) || 0) : value };
+    await updatePaymentApi(paymentId, payload);
+    showToast('Payment updated.');
+    await renderPaymentHistoryModal();
+    renderAll();
+  } catch (err) {
+    showError(err.message);
+    await renderPaymentHistoryModal(); // revert input to real server value
+  }
+}
+
+async function toggleHistoryPaymentStatus(id) {
   try {
     await togglePaymentApi(id);
     showToast('Payment status updated.');
+    await renderPaymentHistoryModal();
     renderAll();
   } catch (err) {
     showError(err.message);
   }
 }
 
-async function deletePayment(id) {
-  if (!confirm('Are you sure you want to delete this payment entry?')) return;
+async function deleteHistoryPayment(id) {
+  if (!confirm('Delete this month\'s payment entry? Only this month will be removed.')) return;
   try {
     await deletePaymentApi(id);
     showToast('Payment entry deleted.');
+    await renderPaymentHistoryModal();
     renderAll();
   } catch (err) {
     showError(err.message);

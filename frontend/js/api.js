@@ -123,6 +123,7 @@ async function getDB() {
   };
 }
 
+
 /* ---------------- Classes ---------------- */
 const addClass = (data) => apiFetch('/classes', { method: 'POST', body: JSON.stringify(data) });
 const updateClass = (id, data) => apiFetch(`/classes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
@@ -139,6 +140,7 @@ const deleteHolidayApi = (id) => apiFetch(`/holidays/${id}`, { method: 'DELETE' 
 
 /* ---------------- Payments ---------------- */
 const addPayment = (data) => apiFetch('/payments', { method: 'POST', body: JSON.stringify(data) });
+const updatePaymentApi = (id, data) => apiFetch(`/payments/${id}`, { method: 'PUT', body: JSON.stringify(data) }); // <-- ADD THIS LINE
 const togglePaymentApi = (id) => apiFetch(`/payments/${id}/toggle`, { method: 'PUT' });
 const deletePaymentApi = (id) => apiFetch(`/payments/${id}`, { method: 'DELETE' });
 const getMyPayments = async () => normalizeList(await apiFetch('/payments/me'));
