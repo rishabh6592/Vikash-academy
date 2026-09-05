@@ -67,9 +67,17 @@ router.post(
       // req.file.filename = Cloudinary public_id
       // req.file.format = Cloudinary-detected format (e.g. "pdf", "jpg") —
       // required later to build a working signed URL for 'raw' files.
+      // req.file.version = Cloudinary asset version — required alongside
+      // format/public_id to reliably resolve a signed URL later. Without it,
+      // Cloudinary intermittently fails to locate 'authenticated' resources.
+      //
+      // Must match the same logic used in middleware/upload.js when deciding
+      // resource_type at upload time — otherwise the admin's "View ID" will
+      // build a signed URL with the wrong resource_type and 404.
       student.idDocument = req.file.filename;
-      student.idDocumentResourceType = req.file.mimetype === 'application/pdf' ? 'raw' : 'image';
+      student.idDocumentResourceType = req.file.mimetype.startsWith('image/') ? 'image' : 'raw';
       student.idDocumentFormat = req.file.format || '';
+      student.idDocumentVersion = req.file.version;
       student.idDocumentOriginalName = req.file.originalname;
       student.idDocumentUploadedAt = new Date();
       await student.save();
@@ -106,6 +114,9 @@ router.get('/:id/id-document', requireAuth, requireRole('admin'), async (req, re
       type: 'authenticated',
       sign_url: true,
       secure: true,
+      // Passing version makes URL resolution reliable — without it Cloudinary
+      // can intermittently fail to locate 'authenticated' resources.
+      version: student.idDocumentVersion,
       // 'raw' resource types need the exact format to resolve correctly —
       // without it, Cloudinary can't locate the file and the URL 404s.
       format: student.idDocumentFormat || undefined
@@ -113,6 +124,7 @@ router.get('/:id/id-document', requireAuth, requireRole('admin'), async (req, re
 
     const cloudRes = await fetch(signedUrl);
     if (!cloudRes.ok) {
+      console.log('Cloudinary fetch failed:', cloudRes.status, await cloudRes.text());
       return res.status(404).json({ message: 'File is missing kindly contact student to upload it again.' });
     }
 

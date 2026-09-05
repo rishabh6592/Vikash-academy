@@ -10,37 +10,31 @@ const storage = new CloudinaryStorage({
     }
     return {
       folder: 'id-documents',
-      // 'auto' PDFs ko Cloudinary "image" type maan ke store karta hai,
-      // jabki hum DB mein PDF ko "raw" maan ke fetch karte hain — mismatch
-      // hone se admin "View ID" pe file fetch nahi hoti. Isliye explicitly
-      // set karte hain taaki upload aur fetch dono same type use karein.
-      resource_type: file.mimetype === 'application/pdf' ? 'raw' : 'image',
+      // Coaching center ke students kai tarah ki files bhej sakte hain
+      // (PDF, image, doc, zip, etc.) — images ko 'image' type se store
+      // karte hain (preview milta hai), baaki sab kuch 'raw' se.
+      resource_type: file.mimetype.startsWith('image/') ? 'image' : 'raw',
       type: 'authenticated',
       public_id: `${req.user.id}-${Date.now()}`,
     };
   },
 });
 
-const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-
+// Ab koi bhi file type allowed hai — sirf size limit restrict karega.
 function fileFilter(req, file, cb) {
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'Only JPG, PNG, WEBP or PDF files are allowed.'));
-  }
+  cb(null, true);
 }
 
 const uploadIdDocument = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB max
 });
 
 function handleUploadError(err, req, res, next) {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ message: 'File 10MB se badi hai. Chhoti file try karein.' });
+      return res.status(400).json({ message: 'File 15MB se badi hai. Chhoti file try karein.' });
     }
     return res.status(400).json({ message: err.message });
   }
