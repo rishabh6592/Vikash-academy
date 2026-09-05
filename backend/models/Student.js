@@ -19,6 +19,10 @@ const studentSchema = new mongoose.Schema(
     // route, which generates a short-lived signed URL from this public_id.
     idDocument: { type: String, default: '' },
     idDocumentResourceType: { type: String, enum: ['image', 'raw'], default: 'image' }, // 'raw' for PDFs
+    // Cloudinary needs the exact file format (e.g. "pdf") to resolve a
+    // signed URL for 'raw' resource types — without it, the URL 404s even
+    // though the file exists. We store what Cloudinary itself detected.
+    idDocumentFormat: { type: String, default: '' },
     idDocumentOriginalName: { type: String, default: '' },
     idDocumentUploadedAt: { type: Date, default: null }
   },

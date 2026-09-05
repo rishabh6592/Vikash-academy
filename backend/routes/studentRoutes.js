@@ -64,9 +64,12 @@ router.post(
           .catch(() => {}); // best-effort — ignore if it's already gone
       }
 
-      // req.file.filename = Cloudinary public_id, req.file.mimetype tells us image vs pdf
+      // req.file.filename = Cloudinary public_id
+      // req.file.format = Cloudinary-detected format (e.g. "pdf", "jpg") —
+      // required later to build a working signed URL for 'raw' files.
       student.idDocument = req.file.filename;
       student.idDocumentResourceType = req.file.mimetype === 'application/pdf' ? 'raw' : 'image';
+      student.idDocumentFormat = req.file.format || '';
       student.idDocumentOriginalName = req.file.originalname;
       student.idDocumentUploadedAt = new Date();
       await student.save();
@@ -102,7 +105,10 @@ router.get('/:id/id-document', requireAuth, requireRole('admin'), async (req, re
       resource_type: resourceType,
       type: 'authenticated',
       sign_url: true,
-      secure: true
+      secure: true,
+      // 'raw' resource types need the exact format to resolve correctly —
+      // without it, Cloudinary can't locate the file and the URL 404s.
+      format: student.idDocumentFormat || undefined
     });
 
     const cloudRes = await fetch(signedUrl);
