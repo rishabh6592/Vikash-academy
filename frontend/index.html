@@ -349,9 +349,9 @@
     }
   }
 
-  // Animates hero stat numbers from 0 up to their real value on page load —
+  // Animates hero stat numbers from 0 up to their real value —
   // fast at first, slowing down smoothly near the end (ease-out).
-  function animateCountUp(el, target, suffix, duration = 1600) {
+  function animateCountUp(el, target, suffix, duration = 1800) {
     const startTime = performance.now();
 
     function easeOutCubic(t) {
@@ -375,12 +375,32 @@
     requestAnimationFrame(step);
   }
 
+  // Only start the count-up animation once the stats actually scroll into view —
+  // on mobile the hero image pushes them below the fold, so running it on page
+  // load (before the user scrolls) meant they'd already be finished/invisible.
   function runHeroCountUp() {
-    document.querySelectorAll('.count-num').forEach(el => {
-      const target = parseInt(el.dataset.count, 10) || 0;
-      const suffix = el.dataset.suffix || '';
-      animateCountUp(el, target, suffix);
-    });
+    const statEls = document.querySelectorAll('.count-num');
+    if (!statEls.length) return;
+
+    let hasAnimated = false;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && !hasAnimated) {
+          hasAnimated = true;
+          statEls.forEach(el => {
+            const target = parseInt(el.dataset.count, 10) || 0;
+            const suffix = el.dataset.suffix || '';
+            animateCountUp(el, target, suffix);
+          });
+          observer.disconnect(); // animate once only, never again
+        }
+      });
+    }, { threshold: 0.4 }); // fires once ~40% of the stats block is visible
+
+    // Observe the closest wrapping element so all three numbers trigger together
+    const wrapper = statEls[0].closest('.hero-stats');
+    observer.observe(wrapper || statEls[0]);
   }
 
   runHeroCountUp();
