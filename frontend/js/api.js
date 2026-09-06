@@ -9,6 +9,33 @@
 // e.g. 'https://vikash-academy-api.onrender.com/api'
 const API_BASE_URL = 'https://vikash-academy-fullstack.onrender.com/api';
 fetch(`${API_BASE_URL}/health`).catch(() => {});
+
+/* ---------------- Global loading bar ----------------
+   Counter-based so multiple parallel API calls don't hide the
+   bar too early (hides only when ALL pending calls finish). */
+let __activeRequests = 0;
+
+function __showGlobalLoader() {
+  __activeRequests++;
+  const bar = document.getElementById('globalLoadBar');
+  if (bar) {
+    bar.classList.remove('done');
+    bar.classList.add('active');
+  }
+}
+
+function __hideGlobalLoader() {
+  __activeRequests = Math.max(0, __activeRequests - 1);
+  if (__activeRequests === 0) {
+    const bar = document.getElementById('globalLoadBar');
+    if (bar) {
+      bar.classList.remove('active');
+      bar.classList.add('done');
+      setTimeout(() => bar.classList.remove('done'), 300);
+    }
+  }
+}
+
 /* ---------------- Session ----------------
    Uses sessionStorage (not localStorage) so each browser TAB keeps
    its own independent login. Opening Admin in one tab and Student
@@ -31,26 +58,31 @@ function clearSession() {
 
 /* ---------------- Low-level request helper ---------------- */
 async function apiFetch(path, options = {}) {
-  const session = getSession();
-  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
-  if (session && session.token) headers.Authorization = `Bearer ${session.token}`;
+  __showGlobalLoader();
+  try {
+    const session = getSession();
+    const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+    if (session && session.token) headers.Authorization = `Bearer ${session.token}`;
 
-  const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+    const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
 
-  let data = null;
-  try { data = await res.json(); } catch (e) { /* empty body is fine */ }
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* empty body is fine */ }
 
-  if (!res.ok) {
-    if (res.status === 401) {
-      // Token missing/expired/invalid — the server is the source of truth here,
-      // so we trust its 401 over whatever the browser still has cached.
-      clearSession();
-      const onAdminPage = document.body.dataset.page === 'admin';
-      window.location.href = onAdminPage ? 'login.html?as=admin' : 'login.html';
+    if (!res.ok) {
+      if (res.status === 401) {
+        // Token missing/expired/invalid — the server is the source of truth here,
+        // so we trust its 401 over whatever the browser still has cached.
+        clearSession();
+        const onAdminPage = document.body.dataset.page === 'admin';
+        window.location.href = onAdminPage ? 'login.html?as=admin' : 'login.html';
+      }
+      throw new Error((data && data.message) || 'Something went wrong. Please try again.');
     }
-    throw new Error((data && data.message) || 'Something went wrong. Please try again.');
+    return data;
+  } finally {
+    __hideGlobalLoader();
   }
-  return data;
 }
 
 /* ---------------- Helpers ---------------- */
@@ -123,7 +155,6 @@ async function getDB() {
   };
 }
 
-
 /* ---------------- Classes ---------------- */
 const addClass = (data) => apiFetch('/classes', { method: 'POST', body: JSON.stringify(data) });
 const updateClass = (id, data) => apiFetch(`/classes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
@@ -162,44 +193,54 @@ const clearAllNotificationsApi = () => apiFetch('/notifications/clear-all', { me
 
 // Student — upload/replace their own ID document
 async function uploadMyIdDocument(file) {
-  const session = getSession();
-  const formData = new FormData();
-  formData.append('idDocument', file);
+  __showGlobalLoader();
+  try {
+    const session = getSession();
+    const formData = new FormData();
+    formData.append('idDocument', file);
 
-  const res = await fetch(`${API_BASE_URL}/students/me/id-document`, {
-    method: 'POST',
-    headers: session && session.token ? { Authorization: `Bearer ${session.token}` } : {},
-    body: formData
-  });
+    const res = await fetch(`${API_BASE_URL}/students/me/id-document`, {
+      method: 'POST',
+      headers: session && session.token ? { Authorization: `Bearer ${session.token}` } : {},
+      body: formData
+    });
 
-  let data = null;
-  try { data = await res.json(); } catch (e) { /* empty body is fine */ }
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* empty body is fine */ }
 
-  if (!res.ok) {
-    if (res.status === 401) {
-      clearSession();
-      window.location.href = 'login.html';
+    if (!res.ok) {
+      if (res.status === 401) {
+        clearSession();
+        window.location.href = 'login.html';
+      }
+      throw new Error((data && data.message) || 'Could not upload document.');
     }
-    throw new Error((data && data.message) || 'Could not upload document.');
+    return data;
+  } finally {
+    __hideGlobalLoader();
   }
-  return data;
 }
 
 // Admin — fetch a student's uploaded ID document as a blob, to open/download it
 async function fetchStudentIdDocument(studentId) {
-  const session = getSession();
-  const res = await fetch(`${API_BASE_URL}/students/${studentId}/id-document`, {
-    headers: session && session.token ? { Authorization: `Bearer ${session.token}` } : {}
-  });
+  __showGlobalLoader();
+  try {
+    const session = getSession();
+    const res = await fetch(`${API_BASE_URL}/students/${studentId}/id-document`, {
+      headers: session && session.token ? { Authorization: `Bearer ${session.token}` } : {}
+    });
 
-  if (!res.ok) {
-    let data = null;
-    try { data = await res.json(); } catch (e) { /* empty body is fine */ }
-    if (res.status === 401) {
-      clearSession();
-      window.location.href = 'login.html?as=admin';
+    if (!res.ok) {
+      let data = null;
+      try { data = await res.json(); } catch (e) { /* empty body is fine */ }
+      if (res.status === 401) {
+        clearSession();
+        window.location.href = 'login.html?as=admin';
+      }
+      throw new Error((data && data.message) || 'Could not load document.');
     }
-    throw new Error((data && data.message) || 'Could not load document.');
+    return res.blob();
+  } finally {
+    __hideGlobalLoader();
   }
-  return res.blob();
 }

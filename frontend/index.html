@@ -13,6 +13,8 @@
 </head>
 <body data-page="site">
 
+  <div id="globalLoadBar"></div>
+
 <header class="site-header">
   <nav class="nav container">
     <a href="index.html" class="brand">
@@ -51,9 +53,9 @@
         <a href="login.html" class="btn btn-outline">Student / Admin Login</a>
       </div>
       <div class="hero-stats">
-        <div class="hero-stat"><b>8</b><span>Classes (6 to 10)</span></div>
-        <div class="hero-stat"><b>900+</b><span>Students learning</span></div>
-        <div class="hero-stat"><b>7 days</b><span>Classes every week</span></div>
+        <div class="hero-stat"><b class="count-num" data-count="8" data-suffix="">0</b><span>Classes (6 to 10)</span></div>
+        <div class="hero-stat"><b class="count-num" data-count="900" data-suffix="+">0</b><span>Students learning</span></div>
+        <div class="hero-stat"><b class="count-num" data-count="7" data-suffix=" days">0</b><span>Classes every week</span></div>
       </div>
     </div>
     <div class="hero-art">
@@ -243,7 +245,7 @@
   window.scrollTo(0, 0);
 }
 <!----------------->
-  
+
   document.getElementById('year').textContent = new Date().getFullYear();
 
   function toggleNav() {
@@ -347,6 +349,41 @@
     }
   }
 
+  // Animates hero stat numbers from 0 up to their real value on page load —
+  // fast at first, slowing down smoothly near the end (ease-out).
+  function animateCountUp(el, target, suffix, duration = 1600) {
+    const startTime = performance.now();
+
+    function easeOutCubic(t) {
+      return 1 - Math.pow(1 - t, 3);
+    }
+
+    function step(now) {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = easeOutCubic(progress);
+      const current = Math.round(eased * target);
+      el.textContent = current + suffix;
+
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
+        el.textContent = target + suffix; // exact final value, no rounding drift
+      }
+    }
+
+    requestAnimationFrame(step);
+  }
+
+  function runHeroCountUp() {
+    document.querySelectorAll('.count-num').forEach(el => {
+      const target = parseInt(el.dataset.count, 10) || 0;
+      const suffix = el.dataset.suffix || '';
+      animateCountUp(el, target, suffix);
+    });
+  }
+
+  runHeroCountUp();
   renderClasses();
   renderHolidays();
   renderCurrentAffairs();
