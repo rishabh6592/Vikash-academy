@@ -23,7 +23,7 @@
     </a>
     <ul class="nav-links">
       <li><a href="#classes">Classes</a></li>
-      <li><a style="color: var(--green-700); font-weight: bolder;" href="#current-affairs">Current Affairs</a></li>
+      <li><a style="color: var(--green-700); font-weight: bolder;" href="current-affairs.html">Current Affairs</a></li>
       <li><a href="#why-us">Why Us</a></li>
       <li><a href="#holidays">Holidays</a></li>
       <li><a href="#contact">Contact</a></li>
@@ -81,19 +81,15 @@
     </div>
   </section>
 
-  <!-- CURRENT AFFAIRS -->
-  <section id="current-affairs" class="section section-alt">
-    <div class="container">
-      <div class="section-head">
-        <span class="tag">Stay Updated</span>
-        <h2>Latest Current Affairs</h2>
-        <p>Fresh headlines updated daily — the last 30 days, right here.</p>
-      </div>
-      <div class="ca-grid" id="currentAffairsGrid">
-        <div class="empty-state">Loading current affairs…</div>
-      </div>
+  <!-- CURRENT AFFAIRS TEASER -->
+  <!-- <section id="current-affairs" class="section section-alt">
+    <div class="container" style="text-align:center;">
+      <span class="tag">Stay Updated</span>
+      <h2>Latest Current Affairs</h2>
+      <p style="max-width:480px; margin:0 auto 24px;">Fresh headlines updated daily — check the latest news relevant to your studies.</p>
+      <a href="current-affairs.html" class="btn btn-primary">View All Current Affairs →</a>
     </div>
-  </section>
+  </section> -->
 
   <!-- WHY US -->
   <section id="why-us" class="section">
@@ -182,7 +178,16 @@
     </div>
   </section>
 </main>
-
+  <!-- ABOUT DEVELOPER -->
+  <section class="section" style="padding-top:0; padding-bottom:40px;">
+    <div class="container" style="text-align:center;">
+      <a href="https://code-portfolio2.netlify.app/" target="_blank" rel="noopener noreferrer"
+         style="display:inline-flex; align-items:center; gap:8px; color:var(--ink-soft); font-size:0.9rem; padding:10px 20px; border:1px solid var(--line); border-radius:999px;">
+        About Developer
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H7M17 7V17"/></svg>
+      </a>
+    </div>
+  </section>
 <footer class="site-footer">
   <div class="container">
     <div class="footer-grid">
@@ -207,6 +212,7 @@
         <h4>Quick Links</h4>
         <ul class="footer-links">
           <li><a href="#classes">Classes</a></li>
+          <li><a href="current-affairs.html">Current Affairs</a></li>
           <li><a href="#holidays">Holidays</a></li>
           <li><a href="#contact">Contact</a></li>
         </ul>
@@ -318,37 +324,6 @@
     }
   }
 
-  function timeAgoCA(dateStr) {
-    const diffMs = Date.now() - new Date(dateStr).getTime();
-    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    if (days < 1) return 'Today';
-    if (days === 1) return '1 day ago';
-    return `${days} days ago`;
-  }
-
-  async function renderCurrentAffairs() {
-    const grid = document.getElementById('currentAffairsGrid');
-    try {
-      const itemsRaw = await apiFetch('/current-affairs');
-      const items = normalizeList(itemsRaw);
-      grid.innerHTML = items.length
-        ? items.slice(0, 12).map(a => `
-            <div class="ca-card">
-              <h4>${a.title}</h4>
-              <div class="ca-meta">
-                <span>${a.sourceName || 'News'}</span>
-                <span>${timeAgoCA(a.publishedAt)}</span>
-              </div>
-              ${a.link ? `<a href="${a.link}" target="_blank" rel="noopener noreferrer">Read more →</a>` : ''}
-            </div>
-          `).join('')
-        : '<div class="empty-state">No current affairs available right now.</div>';
-    } catch (err) {
-      console.error('renderCurrentAffairs failed:', err);
-      grid.innerHTML = '<div class="empty-state">Could not load current affairs right now.</div>';
-    }
-  }
-
   // Animates hero stat numbers from 0 up to their real value —
   // fast at first, slowing down smoothly near the end (ease-out).
   function animateCountUp(el, target, suffix, duration = 1800) {
@@ -406,7 +381,6 @@
   runHeroCountUp();
   renderClasses();
   renderHolidays();
-  renderCurrentAffairs();
 </script>
 </body>
 </html>

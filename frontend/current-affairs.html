@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Current Affairs — Vikash Academy</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='25' fill='%2314532d'/%3E%3Ctext x='50%25' y='55%25' font-family='Poppins, sans-serif' font-size='46' font-weight='700' fill='%23f59e0b' dominant-baseline='middle' text-anchor='middle'%3EVA%3C/text%3E%3C/svg%3E">
+<meta name="description" content="Vikash Academy — Latest current affairs and daily news headlines." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="site">
+
+  <div id="globalLoadBar"></div>
+
+<header class="site-header">
+  <nav class="nav container">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">VA</span>
+      Vikash Academy
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html#classes">Classes</a></li>
+      <li><a style="color: var(--green-700); font-weight: bolder;" href="current-affairs.html">Current Affairs</a></li>
+      <li><a href="index.html#why-us">Why Us</a></li>
+      <li><a href="index.html#holidays">Holidays</a></li>
+      <li><a href="index.html#contact">Contact</a></li>
+      <li class="nav-links-mobile-only"><a href="login.html">Login</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a href="login.html" class="btn btn-outline btn-sm">Login</a>
+      <a href="index.html#contact" class="btn btn-primary btn-sm">Get in Touch</a>
+      <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-expanded="false" onclick="toggleNav()">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </button>
+    </div>
+  </nav>
+</header>
+
+<main>
+  <section class="section" style="padding-top: 40px;">
+    <div class="container">
+      <a href="index.html" style="display:inline-flex; align-items:center; gap:6px; color: var(--ink-soft); font-size:0.9rem; margin-bottom:20px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Back to home
+      </a>
+      <div class="section-head">
+        <span class="tag">Stay Updated</span>
+        <h2>Latest Current Affairs</h2>
+        <p>Fresh headlines updated daily — the last 30 days, right here.</p>
+      </div>
+      <div class="ca-grid" id="currentAffairsGrid">
+        <div class="empty-state">Loading current affairs…</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="brand">
+          <span class="brand-mark">VA</span>
+          Vikash Academy
+        </div>
+        <p>Clear, regular and trustworthy coaching for village students.</p>
+      </div>
+      <div>
+        <h4>Login</h4>
+        <ul class="footer-links">
+          <li><a href="login.html">Student Login</a></li>
+          <li><a href="login.html?as=admin">Admin Login</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Quick Links</h4>
+        <ul class="footer-links">
+          <li><a href="index.html#classes">Classes</a></li>
+          <li><a href="index.html#holidays">Holidays</a></li>
+          <li><a href="index.html#contact">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="year"></span> Vikash Academy. All rights reserved.</span>
+      <span>Built with ❤ for vikash academy's students</span>
+      <button style="position: fixed; bottom: 20px; right: 1rem;"
+        class="top-btn"
+        onclick="window.scrollTo({top:0, behavior:'smooth'})"
+        aria-label="Back to top"
+        title="Back to top">
+        ↑
+      </button>
+    </div>
+  </div>
+</footer>
+
+<script src="js/api.js"></script>
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  function toggleNav() {
+    const isOpen = document.body.classList.toggle('nav-open');
+    document.getElementById('navToggle').classList.toggle('active', isOpen);
+    document.getElementById('navToggle').setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  }
+
+  document.querySelectorAll('.nav-links a').forEach(link => {
+    link.addEventListener('click', () => {
+      if (document.body.classList.contains('nav-open')) {
+        document.body.classList.remove('nav-open');
+        document.getElementById('navToggle').classList.remove('active');
+        document.getElementById('navToggle').setAttribute('aria-expanded', 'false');
+      }
+    });
+  });
+
+  function timeAgoCA(dateStr) {
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (days < 1) return 'Today';
+    if (days === 1) return '1 day ago';
+    return `${days} days ago`;
+  }
+
+  // Shows the FULL list here (no .slice(0, 12) like the home page preview had)
+  async function renderCurrentAffairs() {
+    const grid = document.getElementById('currentAffairsGrid');
+    try {
+      const itemsRaw = await apiFetch('/current-affairs');
+      const items = normalizeList(itemsRaw);
+      grid.innerHTML = items.length
+        ? items.map(a => `
+            <div class="ca-card">
+              <h4>${a.title}</h4>
+              <div class="ca-meta">
+                <span>${a.sourceName || 'News'}</span>
+                <span>${timeAgoCA(a.publishedAt)}</span>
+              </div>
+              ${a.link ? `<a href="${a.link}" target="_blank" rel="noopener noreferrer">Read more →</a>` : ''}
+            </div>
+          `).join('')
+        : '<div class="empty-state">No current affairs available right now.</div>';
+    } catch (err) {
+      console.error('renderCurrentAffairs failed:', err);
+      grid.innerHTML = '<div class="empty-state">Could not load current affairs right now.</div>';
+    }
+  }
+
+  renderCurrentAffairs();
+</script>
+</body>
+</html>
