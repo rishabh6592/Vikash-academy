@@ -3,8 +3,8 @@
 // Local dev example: "http://localhost:5000/api"
 // Production example: "https://your-backend.onrender.com/api"
 // =====================================================================
-const API_BASE = "https://vikash-academy-fullstack.onrender.com/api";
-// const API_BASE = "http://localhost:5000/api";
+// const API_BASE = "https://vikash-academy-fullstack.onrender.com/api";
+const API_BASE = "http://localhost:5000/api";
 
 // ---------- State ----------
 let selectedSubject = null;
