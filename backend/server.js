@@ -12,6 +12,7 @@ const holidayRoutes = require('./routes/holidayRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const currentAffairRoutes = require('./routes/currentAffairRoutes');
+const quizRoutes = require('./routes/quizRoutes');
 
 const app = express();
 
@@ -28,20 +29,17 @@ app.use(cors({
   credentials: true
 }));
 
-// TEMPORARY: request logger — helps confirm whether requests from the
-// phone are even reaching the server, and what Origin they carry.
-// Remove this once the mobile upload issue is fixed.
-app.use((req, res, next) => {
-  console.log(req.method, req.originalUrl, '| Origin:', req.headers.origin);
-  next();
-});
-
 app.use('/api', (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 });
 
-app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
+app.get('/api/health', (req, res) =>
+  res.json({
+    ok: true,
+    time: new Date().toISOString()
+  })
+);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/classes', classRoutes);
@@ -50,26 +48,31 @@ app.use('/api/holidays', holidayRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/current-affairs', currentAffairRoutes);
+app.use('/api/quiz', quizRoutes);
 
-app.use('/api', (req, res) => res.status(404).json({ message: 'Not found.' }));
+app.use('/api', (req, res) =>
+  res.status(404).json({ message: 'Not found.' })
+);
 
 app.use((err, req, res, next) => {
   console.error(err);
-  res.status(500).json({ message: 'Something went wrong on the server.' });
+  res.status(500).json({
+    message: 'Something went wrong on the server.'
+  });
 });
 
 const PORT = process.env.PORT || 5000;
 
-// Server ko turant start karo, DB connection ka wait mat karo.
-// Isse Render ko port turant mil jayega, chahe DB connect ho raha ho ya fail ho jaye.
-app.listen(PORT, () => console.log(`Vikash Academy API running on port ${PORT}`));
+app.listen(PORT, () =>
+  console.log(`Vikash Academy API running on port ${PORT}`)
+);
 
 connectDB()
   .then(() => {
-    console.log('MongoDB connected');
-    fetchCurrentAffairs();
-    cron.schedule('0 6 * * *', fetchCurrentAffairs);
+    // console.log('MongoDB connected');
+    // fetchCurrentAffairs();
+    // cron.schedule('0 6 * * *', fetchCurrentAffairs);
   })
-  .catch((err) => {
+  .catch(err => {
     console.error('MongoDB connection failed:', err.message);
   });

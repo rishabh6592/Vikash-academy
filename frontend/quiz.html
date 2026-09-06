@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Quiz — Vikash Academy</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='25' fill='%2314532d'/%3E%3Ctext x='50%25' y='55%25' font-family='Poppins, sans-serif' font-size='46' font-weight='700' fill='%23f59e0b' dominant-baseline='middle' text-anchor='middle'%3EVA%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/quiz.css" />
+</head>
+<body>
+
+<header class="quiz-topbar">
+  <a href="index.html" class="brand">
+    <span class="brand-badge">VA</span>
+    <span class="brand-name">Vikash Academy</span>
+  </a>
+  <a href="index.html" class="back-link">← Back to Home</a>
+</header>
+
+<main class="quiz-shell">
+
+  <!-- SCREEN 1: Subject + Count selection -->
+  <section id="screen-select" class="screen active">
+    <p class="eyebrow">Practice Quiz</p>
+    <h1>Kaunsa subject try karoge?</h1>
+    <p class="sub">Pick a subject and how many questions you want to attempt.</p>
+
+    <div class="subject-grid" id="subjectGrid">
+      <!-- populated by JS -->
+    </div>
+
+    <div class="count-row">
+      <span class="count-label">Questions:</span>
+      <div class="count-toggle">
+        <button class="count-btn active" data-count="5">5</button>
+        <button class="count-btn" data-count="10">10</button>
+      </div>
+    </div>
+
+    <button id="startBtn" class="btn-primary btn-block" disabled>Start Quiz</button>
+  </section>
+
+  <!-- SCREEN 2: Auth choice -->
+  <section id="screen-auth" class="screen">
+    <p class="eyebrow">Before you start</p>
+    <h1>Kaise khelna chahoge?</h1>
+    <p class="sub">Registered students ka score dashboard aur leaderboard mein save hota hai.</p>
+
+    <div class="auth-choice-grid">
+      <button class="auth-card" id="chooseRegistered">
+        <span class="auth-icon">🎓</span>
+        <span class="auth-title">Registered Student</span>
+        <span class="auth-desc">Login with Roll No + Password. Score saved to your dashboard.</span>
+      </button>
+      <button class="auth-card" id="chooseGuest">
+        <span class="auth-icon">👤</span>
+        <span class="auth-title">Play as Guest</span>
+        <span class="auth-desc">Just enter your name. Score won't be saved.</span>
+      </button>
+    </div>
+
+    <button class="btn-text" id="backToSelect">← Change subject</button>
+  </section>
+
+  <!-- SCREEN 2A: Registered login -->
+  <section id="screen-login" class="screen">
+    <p class="eyebrow">Registered Student</p>
+    <h1>Login to continue</h1>
+
+    <form id="loginForm" class="form-box" autocomplete="off">
+      <label>Roll No
+        <input type="text" id="rollNoInput" required placeholder="e.g. 701" />
+      </label>
+      <label>Password
+        <input type="password" id="passwordInput" required placeholder="Your password" />
+      </label>
+      <p class="error-msg" id="loginError"></p>
+      <button type="submit" class="btn-primary btn-block">Login &amp; Start Quiz</button>
+    </form>
+
+    <button class="btn-text" id="backToAuthFromLogin">← Back</button>
+  </section>
+
+  <!-- SCREEN 2B: Guest form -->
+  <section id="screen-guest" class="screen">
+    <p class="eyebrow">Play as Guest</p>
+    <h1>Apna naam batao</h1>
+
+    <form id="guestForm" class="form-box" autocomplete="off">
+      <label>Your Name
+        <input type="text" id="guestNameInput" required placeholder="e.g. Rahul" />
+      </label>
+      <button type="submit" class="btn-primary btn-block">Start Quiz</button>
+    </form>
+
+    <button class="btn-text" id="backToAuthFromGuest">← Back</button>
+  </section>
+
+  <!-- SCREEN 3: Quiz -->
+  <section id="screen-quiz" class="screen">
+    <div class="quiz-header-row">
+      <span class="quiz-progress-text" id="progressText">Question 1/5</span>
+      <span class="quiz-timer" id="timerText">15s</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+    <h2 class="question-text no-select" id="questionText"></h2>
+
+    <div class="options-list" id="optionsList"></div>
+
+    <button class="btn-primary btn-block" id="nextBtn" disabled>Next</button>
+  </section>
+
+  <!-- SCREEN 4: Result -->
+  <section id="screen-result" class="screen">
+    <p class="eyebrow">Quiz Complete</p>
+    <h1 id="resultHeadline">Great job!</h1>
+    <div class="score-circle">
+      <span class="score-number" id="scoreNumber">0/0</span>
+    </div>
+    <p class="result-note" id="resultNote"></p>
+
+    <div class="review-list" id="reviewList"></div>
+
+    <div class="result-actions">
+      <button class="btn-secondary" id="playAgainBtn">Try Another Quiz</button>
+      <a href="index.html" class="btn-primary" id="dashboardOrHomeBtn">Back to Home</a>
+    </div>
+  </section>
+
+</main>
+
+<script src="js/quiz.js"></script>
+</body>
+</html>
