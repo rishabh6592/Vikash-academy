@@ -1,10 +1,9 @@
 // =====================================================================
-// CONFIG — set this to wherever your backend actually runs.
-// Local dev example: "http://localhost:5000/api"
-// Production example: "https://your-backend.onrender.com/api"
+// CONFIG — Backend local par chal raha hai isliye localhost use ho raha hai
 // =====================================================================
-const API_BASE = "https://vikash-academy-fullstack.onrender.com/api";
 // const API_BASE = "http://localhost:5000/api";
+const API_BASE = "https://vikash-academy-fullstack.onrender.com/api";
+// const API_BASE = "https://vikash-academy-fullstack.onrender.com/api";
 
 // ---------- State ----------
 let selectedSubject = null;
@@ -79,7 +78,7 @@ document.getElementById("backToSelect").addEventListener("click", () => show("sc
 document.getElementById("backToAuthFromLogin").addEventListener("click", () => show("screen-auth"));
 document.getElementById("backToAuthFromGuest").addEventListener("click", () => show("screen-auth"));
 
-// ---------- Screen 2A: Login (reuses your existing /api/auth/student/login) ----------
+// ---------- Screen 2A: Login ----------
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const rollNo = document.getElementById("rollNoInput").value.trim();
@@ -243,7 +242,7 @@ document.getElementById("playAgainBtn").addEventListener("click", () => {
 });
 
 // =====================================================================
-// ANTI-COPY MEASURES (deters casual copy-paste; not a foolproof lock)
+// ANTI-COPY MEASURES
 // =====================================================================
 document.addEventListener("contextmenu", (e) => e.preventDefault());
 
