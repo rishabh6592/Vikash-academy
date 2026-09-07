@@ -3,7 +3,6 @@
 // =====================================================================
 // const API_BASE = "http://localhost:5000/api";
 const API_BASE = "https://vikash-academy-fullstack.onrender.com/api";
-// const API_BASE = "https://vikash-academy-fullstack.onrender.com/api";
 
 // ---------- State ----------
 let selectedSubject = null;
